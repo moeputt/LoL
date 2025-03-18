@@ -1,1 +1,0 @@
-This repository contains code for https://arxiv.org/abs/2410.04207, Learning on LoRAs: GL-Equivariant Processing of Low-Rank Weight Spaces for Large Finetuned Models by Theo Putterman, Derek Lim, Yoav Gelberg, Stefanie Jegelka, and Haggai Maron.
