@@ -13,7 +13,7 @@ import wandb
 from torchvision import datasets, transforms
 from tqdm import tqdm
 from models.models import *
-
+from models.transformer import Transformer
 from utils.utils import AlignedModelDataset, get_equiv_shapes, get_standard_shapes
 from utils.utils import svd, get_uvs_from_file, get_tensors_from_file
 from utils.utils import train, valid, test
@@ -83,7 +83,7 @@ if __name__ == '__main__':
                         help='Path of directory to train on?')
 
     parser.add_argument('--model_type', default=0, type=int,
-                        help='0:GLNet, 1: MLP+Mul, 2: MLP, 3: MLP+SVD, 4: MLP+Align')
+                        help='0:GLNet, 1: MLP+Mul, 2: MLP, 3: MLP+SVD, 4: MLP+Align, 5: Transformer')
     parser.add_argument('--epochs', default=12, type=int,
                     help='number of epochs to train for')
     parser.add_argument('--batch_size', default=100, type=int,
@@ -145,6 +145,11 @@ if __name__ == '__main__':
         point = train_set[0][0]
         ns, ms = get_standard_shapes(point)
         model = SimpleNet(ns, ms, args.hidden_dim, num_pred).to(device)
+    elif args.model_type == 5:
+        point = train_set[0][0]
+        ns,ms = get_standard_shapes(point)
+        model = Transformer(ns, ms, num_pred, d_model = args.hidden_dim, num_layers = args.n_layers).to(device)
+        print(model)
     elif args.model_type == 3:
         num_inputs = train_set[0][0].shape[-1]
         model = BaselineNet(num_inputs, args.hidden_dim, num_pred).to(device)
@@ -152,11 +157,11 @@ if __name__ == '__main__':
         assert False
     
     optimizer = torch.optim.AdamW(model.parameters(), lr = args.lr, weight_decay = .0)
-    train(model, device, train_set,  optimizer, args.epochs, args.batch_size)
+    train(model, device, train_set,  optimizer, args.epochs, args.batch_size, valid_set = valid_set)
     
     loss, acc = test(model, device, test_set, num_pred = num_pred)
-    
-    log_dict = {"test_loss" : loss, "test_acc" :  acc}
+    train_loss, train_acc = test(model, device, train_set, num_pred=num_pred)
+    log_dict = {"test_loss" : loss, "test_acc" :  acc, "train_loss" : train_loss}
     wandb.log(log_dict)
     wandb.finish()
     

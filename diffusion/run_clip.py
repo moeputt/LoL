@@ -10,7 +10,7 @@ import argparse
 import wandb
 from tqdm import tqdm
 from models.models import *
-
+from models.transformer import Transformer
 from utils.utils import AlignedModelDataset, get_equiv_shapes, get_standard_shapes
 from utils.utils import svd, get_uvs_from_file, get_tensors_from_file
 from utils.utils import train_clip, valid_clip, test_clip
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('--train_directory', default="/workspace/peft/examples/lora_dreambooth/models_4", type=str,
                         help='Path of directory to train on?')
     parser.add_argument('--model_type', default=0, type=int,
-                        help='0:GLNet, 1: MLP+Mul, 2: MLP, 3: MLP+SVD, 4: MLP+Align')
+                        help='0:GLNet, 1: MLP+Mul, 2: MLP, 3: MLP+SVD, 4: MLP+Align, 5: Transformer')
     parser.add_argument('--epochs', default=3, type=int, 
                     help='number of epochs to train for')
     parser.add_argument('--batch_size', default=8, type=int, 
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     
     print(f"FINISHED LOADING TRAINING DATA FOR {dir}")
     num_input_layers = len(train_set[0][0])
-    
+    num_pred = 1
     if args.model_type == 0:
         point = train_set[0][0]
         ns, ms = get_equiv_shapes(point)
@@ -128,7 +128,11 @@ if __name__ == '__main__':
         point = train_set[0][0]
         ns, ms = get_standard_shapes(point)
         model = SimpleNet(ns, ms, args.hidden_dim, 1).to(device)
-        
+    elif args.model_type == 5:
+        point = train_set[0][0]
+        ns,ms = get_standard_shapes(point)
+        model = Transformer(ns, ms, num_pred, d_model = args.hidden_dim, num_layers = args.n_layers).to(device)
+        print(model)
     elif args.model_type == 3:
         num_inputs = train_set[0][0].shape[-1]
         

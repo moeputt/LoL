@@ -82,7 +82,7 @@ def test_clip(model, device,  test_set, num_pred = 1):
 
 
 
-def train(model, device, train_set, optimizer, epochs, batch_size=100):
+def train(model, device, train_set, optimizer, epochs, batch_size=100, valid_set = None):
     model.train()
     train_loader = torch.utils.data.DataLoader(train_set, batch_size = batch_size, shuffle = True, drop_last=True)
     loss_fn = nn.BCEWithLogitsLoss()
@@ -98,6 +98,7 @@ def train(model, device, train_set, optimizer, epochs, batch_size=100):
             optimizer.step()
             tot_loss += loss.item()
         tqdm.write(f"EPOCH {epoch}: Loss {tot_loss/len(train_loader)}")
+        valid(model, device, valid_set)
 def valid(model, device, valid_set, num_pred = 10):
     model.eval()
     test_loss = 0
@@ -172,6 +173,7 @@ class AlignedModelDataset(torch.utils.data.Dataset):
         return self.data[idx]
     def __len__(self):
         return len(self.data)
+u_std, v_std = [0.0046, 0.0235]
 def svd(a,b):
     R_1 = torch.linalg.qr(a).R
     R_2 = torch.linalg.qr(b).R

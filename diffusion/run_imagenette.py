@@ -3,6 +3,7 @@ from transformers import AutoImageProcessor, ResNetForImageClassification
 import torch
 from torch import nn
 from torch.nn import functional as F
+from models.transformer import Transformer
 from safetensors.numpy import load_file
 from itertools import chain, combinations
 import os
@@ -13,7 +14,7 @@ import argparse
 import wandb
 from tqdm import tqdm
 from models.models import *
-
+u_std, v_std = [0.0046, 0.0235]
 from utils.utils import AlignedModelDataset, get_equiv_shapes, get_standard_shapes
 from utils.utils import svd, get_uvs_from_file, get_tensors_from_file
 from utils.utils import train, valid, test
@@ -68,7 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_directory', default="/workspace/b/s1-5models", type=str,
                         help='Path of directory for OOD testing?')
     parser.add_argument('--model_type', default=0, type=int,
-                        help='0:GLNet, 1: MLP+Mul, 2: MLP, 3: MLP+SVD, 4: MLP+Align')
+                        help='0:GLNet, 1: MLP+Mul, 2: MLP, 3: MLP+SVD, 4: MLP+Align, 5: Transformer')
     parser.add_argument('--epochs', default=3, type=int,
                     help='number of epochs to train for')
     parser.add_argument('--batch_size', default=8, type=int,
@@ -89,7 +90,7 @@ if __name__ == '__main__':
     
     wandb.init(
         # set the wandb project where this run will be logged
-        project="LOL-Imagenette",
+        project="LOL-Imagenette-final",
         config = args
         # track hyperparameters and run metadata
     )
@@ -129,6 +130,11 @@ if __name__ == '__main__':
         point = train_set[0][0]
         ns,ms = get_standard_shapes(point)
         model = SimpleNet(ns, ms, args.hidden_dim, num_pred).to(device)
+    elif args.model_type == 5:
+        point = train_set[0][0]
+        ns,ms = get_standard_shapes(point)
+        model = Transformer(ns, ms, num_pred, d_model = args.hidden_dim, num_layers = args.n_layers).to(device)
+        print(model)
     elif args.model_type == 3:
         num_inputs = train_set[0][0].shape[-1]
         model = BaselineNet(num_inputs, args.hidden_dim, num_pred).to(device)
@@ -136,7 +142,7 @@ if __name__ == '__main__':
         assert False
     
     optimizer = torch.optim.AdamW(model.parameters(), lr = args.lr, weight_decay = .0)
-    train(model, device, train_set, optimizer, args.epochs, args.batch_size)
+    train(model, device, train_set, optimizer, args.epochs, args.batch_size, valid_set = valid_set)
     
     id_loss, id_acc = test(model, device, test_set, num_pred)
     dir = test_on
